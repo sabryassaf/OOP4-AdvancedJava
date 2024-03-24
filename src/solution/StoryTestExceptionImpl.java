@@ -8,9 +8,9 @@ import java.util.List;
 public  class StoryTestExceptionImpl extends StoryTestException {
     @Serial
     private static final long serialVersionUID = 95576353840828036L;
-    private String line;
-    private String expected;
-    private String actual;
+    public String line;
+    public String expected;
+    public String actual;
     private int failures;
 
     public StoryTestExceptionImpl() {
@@ -21,7 +21,7 @@ public  class StoryTestExceptionImpl extends StoryTestException {
      * Returns a string representing the sentence
      * of the first Then sentence that failed
      */
-    public String getSentance() { return line.stripTrailing(); }
+    public String getSentance() { return line; }
 
     /**
      * Returns a string representing the expected value from the story

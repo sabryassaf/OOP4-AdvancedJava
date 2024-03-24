@@ -155,9 +155,9 @@ public class StoryTesterImpl implements StoryTester {
                     if (e.getCause() instanceof ComparisonFailure) {
                         this.numFails++;
                         if (this.numFails == 1) {
-                            this.firstFailedSentence = sentenceSub;
-                            this.expected = ((ComparisonFailure) e.getCause()).getExpected();
-                            this.result = ((ComparisonFailure) e.getCause()).getActual();
+                            storyTestException.line = sentence;
+                            storyTestException.expected = ((ComparisonFailure) e.getCause()).getExpected();
+                            storyTestException.actual = ((ComparisonFailure) e.getCause()).getActual();
                             restoreInstance(testInstance);
                         }
                     }
@@ -194,6 +194,13 @@ public class StoryTesterImpl implements StoryTester {
 }
     @Override
     public void testOnNestedClasses(String story, Class<?> testClass) throws Exception {
-        // TODO: Complete.
+        if ((story == null) || testClass == null) throw new IllegalArgumentException();
+        try{
+            testOnInheritanceTree(story, testClass);
+        } catch (GivenNotFoundException e) {
+            for (Class<?> innerClass : testClass.getDeclaredClasses()) {
+                testOnNestedClasses(story, innerClass);
+            }
+        }
     }
 }
