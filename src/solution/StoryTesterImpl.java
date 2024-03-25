@@ -175,7 +175,17 @@ public class StoryTesterImpl implements StoryTester {
     private Method getMethod(Class<?> testClass, String sentence, Class<? extends Annotation> annotationClass) throws GivenNotFoundException, ThenNotFoundException, WhenNotFoundException {
         for (Method method : testClass.getDeclaredMethods()) {
             if (method.isAnnotationPresent(annotationClass)) {
-                return method;
+                //check if the method has the right sentence
+                try{
+                    Method valuemethod = annotationClass.getMethod("value");
+                    String value = (String) valuemethod.invoke(method.getAnnotation(annotationClass));
+                    String sentenceWithoutParameter = value.substring(0, value.lastIndexOf(' '));
+                    if (sentenceWithoutParameter.equals(sentence)) {
+                        return method;
+                    }
+                } catch (Exception e) {
+
+                }
             }
         }
         Class<?> superclass = testClass.getSuperclass();
@@ -194,6 +204,31 @@ public class StoryTesterImpl implements StoryTester {
             }
         }
 }
+
+    // testOnNestedClasses
+    public boolean auxNested(String story, Class<?> testClass) throws Exception {
+        if ((story == null) || testClass == null) throw new IllegalArgumentException();
+
+        // check if this nested class has the Given
+        String sentence = story.split("\n")[0];
+        String[] words = sentence.split(" ", 2);
+
+        String annotationName = words[0];
+
+        Class<? extends Annotation> annotationClass = GetAnnotationClass(annotationName);
+
+        String sentenceSub = words[1].substring(0, words[1].lastIndexOf(' ')); // Sentence without the parameter and annotation
+        String parameter = sentence.substring(sentence.lastIndexOf(' ') + 1);
+
+        Method method = getMethod(testClass, sentenceSub, annotationClass);
+        if (method == null) {
+            //this means the current inner class dones't have the right given so we continue to the next inner class
+            throw new GivenNotFoundException();
+        }
+
+        testOnInheritanceTree(story, testClass);
+        return true;
+    }
     @Override
     public void testOnNestedClasses(String story, Class<?> testClass) throws Exception {
         if ((story == null) || testClass == null) throw new IllegalArgumentException();
@@ -201,9 +236,18 @@ public class StoryTesterImpl implements StoryTester {
             testOnInheritanceTree(story, testClass);
         } catch (GivenNotFoundException e) {
             //iterate over the nested classes
-            for (Class<?> innerClass : testClass.getDeclaredClasses()) {
-                testOnNestedClasses(story, innerClass);
+            Class<?>[] nestedClasses = testClass.getDeclaredClasses();
+            for (Class<?> innerClass : nestedClasses){
+                try{
+                    if (auxNested(story, innerClass)){
+                        return;
+                    }
+                } catch (GivenNotFoundException e1){
+                } catch (StoryTestException e2){
+                    throw e2;
+                }
             }
         }
+        throw new GivenNotFoundException();
     }
 }
