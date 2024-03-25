@@ -25,15 +25,16 @@ public class StoryTesterImpl implements StoryTester {
 
     /** Creates and returns a new instance of testClass **/
     private static Object createTestInstance(Class<?> testClass) throws Exception {
-        storyTestException = new StoryTestExceptionImpl();
+
         try {
             // TODO: Try constructing a new instance using the default constructor of testClass -- should be done
-            Object newInstance = testClass.getConstructor().newInstance();
-            return newInstance;
+            Constructor<?> newInstance = testClass.getConstructor();
+            newInstance.setAccessible(true);
+            return newInstance.newInstance();
         } catch (Exception e) {
             // TODO: Inner classes case; Need to first create an instance of the enclosing class -- should be done
             Object enclosingInstance = createTestInstance(testClass.getEnclosingClass());
-            Constructor<?> constructor = testClass.getConstructor(enclosingInstance.getClass());
+            Constructor<?> constructor = testClass.getConstructor(testClass.getEnclosingClass());
 
             constructor.setAccessible(true);
             Object newInnerInstance = constructor.newInstance(enclosingInstance);
@@ -114,6 +115,7 @@ public class StoryTesterImpl implements StoryTester {
 
     @Override
     public void testOnInheritanceTree(String story, Class<?> testClass) throws Exception {
+        storyTestException = new StoryTestExceptionImpl();
         if ((story == null) || testClass == null) throw new IllegalArgumentException();
 
         this.numFails = 0;
@@ -198,6 +200,7 @@ public class StoryTesterImpl implements StoryTester {
         try{
             testOnInheritanceTree(story, testClass);
         } catch (GivenNotFoundException e) {
+            //iterate over the nested classes
             for (Class<?> innerClass : testClass.getDeclaredClasses()) {
                 testOnNestedClasses(story, innerClass);
             }
