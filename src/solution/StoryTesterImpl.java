@@ -23,7 +23,9 @@ public class StoryTesterImpl implements StoryTester {
     static StoryTestExceptionImpl storyTestException;
 
 
-    /** Creates and returns a new instance of testClass **/
+    /**
+     * Creates and returns a new instance of testClass
+     **/
     private static Object createTestInstance(Class<?> testClass) throws Exception {
 
         try {
@@ -33,15 +35,23 @@ public class StoryTesterImpl implements StoryTester {
             return newInstance.newInstance();
         } catch (Exception e) {
             // TODO: Inner classes case; Need to first create an instance of the enclosing class -- should be done
-            Object enclosingInstance = createTestInstance(testClass.getEnclosingClass());
-            Constructor<?> constructor = testClass.getConstructor(testClass.getEnclosingClass());
+            Object outer = createTestInstance(testClass.getEnclosingClass());
+            Constructor<?>[] innerConstructor = testClass.getDeclaredConstructors();
+            innerConstructor[0].setAccessible(true);
+            Class<?>[] parameterTypes = innerConstructor[0].getParameterTypes();
 
-            constructor.setAccessible(true);
-            Object newInnerInstance = constructor.newInstance(enclosingInstance);
+            if (parameterTypes.length == 0) {
+                    // This is a no-arg constructor, use it to create a new instance
+                return innerConstructor[0].newInstance();
+            } else{
+                // This constructor takes an instance of the outer class as a parameter
+                return innerConstructor[0].newInstance(outer);
+            }
+            }
 
-            return newInnerInstance;
-        }
+
     }
+
 
     /** Returns true if c has a copy constructor, or false if it doesn't **/
     private boolean copyConstructorExists(Class<?> c){
@@ -69,9 +79,9 @@ public class StoryTesterImpl implements StoryTester {
 
             if(fieldObject instanceof Cloneable){
                 // TODO: Case1 - Object in field is cloneable
-                Method cloneMethod = fieldClass.getMethod("clone");
+                Method cloneMethod = fieldClass.getDeclaredMethod("clone");
+                cloneMethod.setAccessible(true);
                 field.set(res, cloneMethod.invoke(fieldObject));
-
             }
             else if(copyConstructorExists(fieldClass)){
                 // TODO: Case2 - Object in field is not cloneable but copy constructor exists
@@ -234,6 +244,8 @@ public class StoryTesterImpl implements StoryTester {
         if ((story == null) || testClass == null) throw new IllegalArgumentException();
         try{
             testOnInheritanceTree(story, testClass);
+            return;
+
         } catch (GivenNotFoundException e) {
             //iterate over the nested classes
             Class<?>[] nestedClasses = testClass.getDeclaredClasses();
@@ -250,4 +262,6 @@ public class StoryTesterImpl implements StoryTester {
         }
         throw new GivenNotFoundException();
     }
+
+
 }
