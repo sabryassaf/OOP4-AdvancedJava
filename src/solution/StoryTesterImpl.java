@@ -30,7 +30,7 @@ public class StoryTesterImpl implements StoryTester {
 
         try {
             // TODO: Try constructing a new instance using the default constructor of testClass -- should be done
-            Constructor<?> newInstance = testClass.getConstructor();
+            Constructor<?> newInstance = testClass.getDeclaredConstructor();
             newInstance.setAccessible(true);
             return newInstance.newInstance();
         } catch (Exception e) {
@@ -39,17 +39,8 @@ public class StoryTesterImpl implements StoryTester {
             Constructor<?>[] innerConstructor = testClass.getDeclaredConstructors();
             innerConstructor[0].setAccessible(true);
             Class<?>[] parameterTypes = innerConstructor[0].getParameterTypes();
-
-            if (parameterTypes.length == 0) {
-                    // This is a no-arg constructor, use it to create a new instance
-                return innerConstructor[0].newInstance();
-            } else{
-                // This constructor takes an instance of the outer class as a parameter
-                return innerConstructor[0].newInstance(outer);
+            return innerConstructor[0].newInstance(outer);
             }
-            }
-
-
     }
 
 
@@ -219,23 +210,31 @@ public class StoryTesterImpl implements StoryTester {
     public boolean auxNested(String story, Class<?> testClass) throws Exception {
         if ((story == null) || testClass == null) throw new IllegalArgumentException();
 
-        // check if this nested class has the Given
-        String sentence = story.split("\n")[0];
-        String[] words = sentence.split(" ", 2);
+        try {
+            // check if this nested class has the Given
+            String sentence = story.split("\n")[0];
+            String[] words = sentence.split(" ", 2);
 
-        String annotationName = words[0];
+            String annotationName = words[0];
 
-        Class<? extends Annotation> annotationClass = GetAnnotationClass(annotationName);
+            Class<? extends Annotation> annotationClass = GetAnnotationClass(annotationName);
 
-        String sentenceSub = words[1].substring(0, words[1].lastIndexOf(' ')); // Sentence without the parameter and annotation
-        String parameter = sentence.substring(sentence.lastIndexOf(' ') + 1);
+            String sentenceSub = words[1].substring(0, words[1].lastIndexOf(' ')); // Sentence without the parameter and annotation
+            String parameter = sentence.substring(sentence.lastIndexOf(' ') + 1);
 
-        Method method = getMethod(testClass, sentenceSub, annotationClass);
-        if (method == null) {
-            //this means the current inner class dones't have the right given so we continue to the next inner class
-            throw new GivenNotFoundException();
+            Method method = getMethod(testClass, sentenceSub, annotationClass);
+            if (method == null) {
+                //this means the current inner class dones't have the right given so we continue to the next inner class
+                throw new GivenNotFoundException();
+            }
         }
-
+        catch (GivenNotFoundException e) {
+            for (Class<?> innerClass : testClass.getDeclaredClasses()) {
+                if (auxNested(story, innerClass)) {
+                    return true;
+                }
+            }
+        }
         testOnInheritanceTree(story, testClass);
         return true;
     }
@@ -255,8 +254,6 @@ public class StoryTesterImpl implements StoryTester {
                         return;
                     }
                 } catch (GivenNotFoundException e1){
-                } catch (StoryTestException e2){
-                    throw e2;
                 }
             }
         }
